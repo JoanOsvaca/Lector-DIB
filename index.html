@@ -11,8 +11,8 @@
 header{background:var(--green);color:#fff;padding:20px 16px 18px}header h1{margin:0;font-size:1.35rem}header p{margin:5px 0 0;color:#dcebe4;font-size:.92rem}
 main{max-width:900px;margin:auto;padding:14px;display:grid;gap:14px}
 .card{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 2px 8px #163a2d0b}
-h2{font-size:1.05rem;margin:0 0 12px}.camera{position:relative;background:#111;border-radius:12px;overflow:hidden;aspect-ratio:1.414/1;display:flex;align-items:center;justify-content:center;min-height:190px}
-video{width:100%;height:100%;object-fit:contain}.frame{position:absolute;left:50%;top:50%;width:88%;height:auto;aspect-ratio:1.414/1;transform:translate(-50%,-50%);border:2px solid #7ce0a6;border-radius:8px;pointer-events:none;box-shadow:0 0 0 999px #0003}
+h2{font-size:1.05rem;margin:0 0 12px}.camera{position:relative;background:#111;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;min-height:300px}
+video{position:absolute;width:133.333%;height:75%;object-fit:contain;transform:rotate(90deg)}.frame{position:absolute;left:50%;top:50%;width:88%;height:auto;aspect-ratio:1.414/1;transform:translate(-50%,-50%);border:2px solid #7ce0a6;border-radius:8px;pointer-events:none;box-shadow:0 0 0 999px #0003}
 .hint{font-size:.88rem;color:var(--muted);margin:9px 0 12px}.buttons{display:flex;gap:8px;flex-wrap:wrap}
 button,.filelabel{border:0;border-radius:10px;padding:12px 14px;font-weight:650;font-size:.95rem;background:var(--green);color:#fff;cursor:pointer}
 button.secondary{background:#e8efeb;color:var(--green)}button.danger{background:#fff0f0;color:#8d2020}button:disabled{opacity:.45;cursor:default}
@@ -33,7 +33,7 @@ footer{font-size:.8rem;color:var(--muted);line-height:1.45;padding:0 2px 18px}
 <section class="card">
 <h2>1. Escaneig en directe</h2>
 <div class="camera"><video id="video" autoplay muted playsinline></video><div class="frame"></div></div>
-<p class="hint">Gira el mòbil en horitzontal, igual que el DIB. Enfoca el número d’identificació i la data de naixement dins del requadre verd. Mantén el DIB quiet i amb bona llum. La primera vegada cal permetre l’accés a la càmera.</p>
+<p class="hint">Mantén el mòbil en vertical i posa el DIB horitzontal davant la càmera. Enfoca el número d’identificació i la data de naixement dins del requadre verd. Mantén el DIB quiet i amb bona llum. La primera vegada cal permetre l’accés a la càmera.</p>
 <div class="buttons">
 <button id="start">Activar càmera</button><button id="stop" class="secondary" disabled>Aturar</button>
 <button id="scan" class="secondary" disabled>Escanejar ara</button>
@@ -109,8 +109,8 @@ async function scanFrame(manual){
  const v=$('video');if(!v.videoWidth)return;
  $('scan').disabled=true;
  try{
-  const c=document.createElement('canvas');c.width=1000;c.height=Math.round(1000*v.videoHeight/v.videoWidth);
-  const ctx=c.getContext('2d');ctx.drawImage(v,0,0,c.width,c.height);
+  const c=document.createElement('canvas');const scale=1000/Math.max(v.videoWidth,v.videoHeight);c.width=Math.round(v.videoHeight*scale);c.height=Math.round(v.videoWidth*scale);
+  const ctx=c.getContext('2d');ctx.translate(c.width/2,c.height/2);ctx.rotate(Math.PI/2);ctx.drawImage(v,-c.height/2,-c.width/2,c.height,c.width);
   const result=await worker.recognize(c);const txt=result.data.text||'';const d=findData(txt);
   if(d.ident||d.birth){
    fill(d);const key=d.ident+'|'+d.birth;
