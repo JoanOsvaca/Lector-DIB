@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173f35">
+<title>Lector DIB boví</title>
+<style>
+:root{--green:#173f35;--green2:#246451;--bg:#f3f6f4;--line:#d8e1dc;--text:#1d2924;--muted:#66756e;--red:#a52a2a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--green);color:#fff;padding:20px 16px 18px}header h1{margin:0;font-size:1.35rem}header p{margin:5px 0 0;color:#dcebe4;font-size:.92rem}
+main{max-width:900px;margin:auto;padding:14px;display:grid;gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 2px 8px #163a2d0b}
+h2{font-size:1.05rem;margin:0 0 12px}.camera{position:relative;background:#111;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:contain}.frame{position:absolute;left:5%;right:5%;top:24%;height:52%;border:2px solid #7ce0a6;border-radius:8px;pointer-events:none;box-shadow:0 0 0 999px #0003}
+.hint{font-size:.88rem;color:var(--muted);margin:9px 0 12px}.buttons{display:flex;gap:8px;flex-wrap:wrap}
+button,.filelabel{border:0;border-radius:10px;padding:12px 14px;font-weight:650;font-size:.95rem;background:var(--green);color:#fff;cursor:pointer}
+button.secondary{background:#e8efeb;color:var(--green)}button.danger{background:#fff0f0;color:#8d2020}button:disabled{opacity:.45;cursor:default}
+.status{padding:10px 12px;border-radius:10px;background:#eef4f0;color:var(--green);font-size:.9rem;margin-top:10px;overflow-wrap:anywhere}
+.status.error{background:#fff0f0;color:#8d2020}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{background:#f7f9f8;border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}.field small{display:block;color:var(--muted);font-size:.76rem}.field strong{display:block;font-size:1.02rem;overflow-wrap:anywhere;margin-top:3px}
+input{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;background:#fff}
+.manual{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}.manual label{font-size:.8rem;color:var(--muted);display:grid;gap:5px}
+.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 8px;white-space:nowrap}th{font-size:.78rem;color:var(--muted)}td:first-child{font-weight:750}
+.empty{padding:18px;text-align:center;color:var(--muted)}.count{font-size:.85rem;color:var(--muted);margin-left:6px}
+footer{font-size:.8rem;color:var(--muted);line-height:1.45;padding:0 2px 18px}
+@media(min-width:760px){main{grid-template-columns:1fr 1fr;align-items:start} .listcard{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header><h1>🐄 Lector DIB boví</h1><p>Lectura amb càmera en directe · llistat d'animals · exportació a Excel</p></header>
+<main>
+<section class="card">
+<h2>1. Escaneig en directe</h2>
+<div class="camera"><video id="video" autoplay muted playsinline></video><div class="frame"></div></div>
+<p class="hint">Enfoca el número d’identificació i la data de naixement dins del requadre. Mantén el DIB quiet i amb bona llum. La primera vegada cal permetre l’accés a la càmera.</p>
+<div class="buttons">
+<button id="start">Activar càmera</button><button id="stop" class="secondary" disabled>Aturar</button>
+<button id="scan" class="secondary" disabled>Escanejar ara</button>
+</div>
+<div id="status" class="status">Preparat. Activa la càmera per començar.</div>
+</section>
+<section class="card">
+<h2>2. Dades detectades</h2>
+<div class="results">
+<div class="field"><small>Últims 4 números</small><strong id="last4">—</strong></div>
+<div class="field"><small>Data de naixement</small><strong id="birth">—</strong></div>
+<div class="field" style="grid-column:1/-1"><small>Número d’identificació complet</small><strong id="ident">—</strong></div>
+</div>
+<div class="manual">
+<label>Últims 4 números<input id="manual4" inputmode="numeric" maxlength="4" placeholder="Ex. 5706"></label>
+<label>Data de naixement<input id="manualdate" placeholder="DD/MM/AAAA"></label>
+<label style="grid-column:1/-1">Identificació completa<input id="manualid" autocapitalize="characters" placeholder="Ex. FR4324265706"></label>
+</div>
+<div class="buttons"><button id="add">Afegir animal</button><button id="clearfields" class="secondary">Netejar camps</button></div>
+<p class="hint">Revisa sempre les dades llegides abans d’afegir l’animal. L’OCR pot confondre algun dígit.</p>
+</section>
+<section class="card listcard">
+<h2>3. Llistat d’animals <span class="count" id="count">0 animals</span></h2>
+<div class="buttons" style="margin-bottom:10px"><button id="export">Exportar Excel (CSV)</button><button id="exportjson" class="secondary">Còpia de seguretat</button><label class="filelabel secondary" style="background:#e8efeb;color:#173f35">Importar CSV<input id="importfile" type="file" accept=".csv,text/csv" hidden></label><button id="clearlist" class="danger">Esborrar llistat</button></div>
+<div class="tablewrap"><table><thead><tr><th>Últims 4</th><th>Naixement</th><th>Identificació</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div id="empty" class="empty">Encara no hi ha cap animal. Escaneja un DIB o introdueix les dades manualment.</div>
+</section>
+<footer>Prototip inicial. La lectura es fa al navegador amb OCR i no garanteix el 100% d’encerts. Les dades es guarden només en aquesta sessió del navegador; exporta el CSV per conservar-les. La càmera normalment requereix HTTPS (o localhost). No tanquis la pàgina abans d’exportar.</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let stream=null, worker=null, scanning=false, scanTimer=null, lastCandidate='', stableCount=0, animals=[];
+function setStatus(msg,error=false){$('status').textContent=msg;$('status').className='status'+(error?' error':'')}
+function normalizeId(s){return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^FR/, 'FR')}
+function findData(text){
+ const clean=(text||'').toUpperCase().replace(/[|]/g,'1').replace(/[OQ]/g,'0').replace(/\s/g,'');
+ // DIB identification normally begins with country prefix FR and digits.
+ let idMatch=clean.match(/FR[A-Z0-9]{8,14}/);
+ if(!idMatch){let raw=(text||'').toUpperCase().replace(/[^A-Z0-9]/g,'');idMatch=raw.match(/FR[A-Z0-9]{8,14}/)}
+ let ident=idMatch?normalizeId(idMatch[0]):'';
+ if(ident && ident.length>14) ident=ident.slice(0,14);
+ let dates=[...(text||'').matchAll(/(?:0?[1-9]|[12]\d|3[01])[\/.\-\s](?:0?[1-9]|1[0-2])[\/.\-\s](?:20)?\d{2}/g)].map(m=>m[0].replace(/[.\-\s]/g,'/'));
+ // Prefer plausible birth date; skip issue date if birth label is nearby.
+ let birth='';
+ const lines=(text||'').split(/\n/);
+ for(let i=0;i<lines.length;i++){
+  if(/NAIXEMENT|NACIMIENTO|BIRTH/i.test(lines[i])){
+   const m=(lines.slice(i,i+3).join(' ').match(/(?:0?[1-9]|[12]\d|3[01])[\/.\-\s](?:0?[1-9]|1[0-2])[\/.\-\s](?:20)?\d{2}/));
+   if(m){birth=m[0].replace(/[.\-\s]/g,'/');break}
+  }
+ }
+ if(!birth && dates.length) birth=dates.find(d=>d!=='03/03/2026')||dates[0]||'';
+ // Standardize date to DD/MM/YYYY
+ if(birth){let p=birth.split('/');if(p.length===3){if(p[2].length===2)p[2]='20'+p[2];birth=p.map((v,i)=>i<2?v.padStart(2,'0'):v).join('/')}}
+ return {ident,last4:ident?ident.slice(-4):'',birth};
+}
+function fill(d){$('last4').textContent=d.last4||'—';$('birth').textContent=d.birth||'—';$('ident').textContent=d.ident||'—';$('manual4').value=d.last4||'';$('manualdate').value=d.birth||'';$('manualid').value=d.ident||''}
+async function startCamera(){
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  $('video').srcObject=stream;$('start').disabled=true;$('stop').disabled=false;$('scan').disabled=false;
+  setStatus('Càmera activa. Preparant el lector OCR…');
+  if(!window.Tesseract){setStatus('No s’ha pogut carregar l’OCR. Comprova la connexió a internet.',true);return}
+  worker=await Tesseract.createWorker('eng');
+  await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/.- :',preserve_interword_spaces:'1'});
+  scanning=true;setStatus('Lector preparat. Enfoca el DIB; escaneig automàtic cada 2 segons.');
+  scanTimer=setInterval(()=>scanFrame(false),2000);
+ }catch(e){setStatus('No s’ha pogut activar la càmera: '+(e.message||e)+'. Revisa els permisos i que la pàgina sigui HTTPS.',true)}
+}
+async function scanFrame(manual){
+ if(!stream||!worker||!scanning)return;
+ const v=$('video');if(!v.videoWidth)return;
+ $('scan').disabled=true;
+ try{
+  const c=document.createElement('canvas');c.width=1000;c.height=Math.round(1000*v.videoHeight/v.videoWidth);
+  const ctx=c.getContext('2d');ctx.drawImage(v,0,0,c.width,c.height);
+  const result=await worker.recognize(c);const txt=result.data.text||'';const d=findData(txt);
+  if(d.ident||d.birth){
+   fill(d);const key=d.ident+'|'+d.birth;
+   if(d.ident && d.birth && key===lastCandidate)stableCount++;else{lastCandidate=key;stableCount=1}
+   setStatus('Dades detectades. '+(d.ident?'Identificació: '+d.ident+'. ':'')+(d.birth?'Naixement: '+d.birth+'. ':'')+(d.ident&&d.birth?'Mantén el DIB quiet per confirmar la lectura.':'Falta alguna dada; revisa-la manualment.'));
+   if(d.ident&&d.birth&&stableCount>=2&&!animals.some(a=>a.ident===d.ident)){addAnimal(d);stableCount=0;lastCandidate='';setStatus('Animal afegit automàticament: '+d.ident+' · '+d.birth)}
+   else if(d.ident&&d.birth&&animals.some(a=>a.ident===d.ident)){setStatus('Aquest animal ja és al llistat: '+d.ident)}
+  }else if(manual){setStatus('No he pogut llegir les dades. Apropa el DIB, millora la llum o introdueix-les manualment.',true)}
+ }catch(e){if(manual)setStatus('Error de lectura OCR: '+e.message,true)}
+ finally{$('scan').disabled=false}
+}
+function addAnimal(d){
+ const ident=normalizeId(d.ident||$('manualid').value);let birth=(d.birth||$('manualdate').value||'').trim();let last4=(d.last4||$('manual4').value||'').trim();
+ if(!ident && !last4){setStatus('Cal indicar el número d’identificació o els quatre últims números.',true);return}
+ if(ident && !last4)last4=ident.slice(-4);
+ if(ident && animals.some(a=>a.ident===ident)){setStatus('Aquest número d’identificació ja existeix al llistat.');return}
+ animals.push({last4,birth,ident});animals.sort((a,b)=>a.last4.localeCompare(b.last4,undefined,{numeric:true}));
+ render();fill({});$('manual4').value='';$('manualdate').value='';$('manualid').value='';
+}
+function render(){
+ $('rows').innerHTML='';$('empty').style.display=animals.length?'none':'block';$('count').textContent=animals.length+' animal'+(animals.length===1?'':'s');
+ animals.forEach((a,i)=>{const tr=document.createElement('tr');[a.last4,a.birth,a.ident].forEach(v=>{const td=document.createElement('td');td.textContent=v||'—';tr.appendChild(td)});const td=document.createElement('td');const b=document.createElement('button');b.className='danger';b.textContent='Treure';b.style.padding='7px 9px';b.onclick=()=>{animals.splice(i,1);render()};td.appendChild(b);tr.appendChild(td);$('rows').appendChild(tr)})
+}
+function csvEscape(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}
+function download(name,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('start').onclick=startCamera;
+$('stop').onclick=async()=>{scanning=false;clearInterval(scanTimer);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;if(worker){await worker.terminate();worker=null}$('video').srcObject=null;$('start').disabled=false;$('stop').disabled=true;$('scan').disabled=true;setStatus('Càmera aturada.')};
+$('scan').onclick=()=>scanFrame(true);
+$('add').onclick=()=>addAnimal({last4:$('manual4').value.trim(),birth:$('manualdate').value.trim(),ident:$('manualid').value.trim()});
+$('clearfields').onclick=()=>fill({});
+$('export').onclick=()=>{const rows=[['Ultims 4 numeros','Data de naixement','Numero identificacio'],...animals.map(a=>[a.last4,a.birth,a.ident])];download('llistat_DIB.csv','\ufeff'+rows.map(r=>r.map(csvEscape).join(';')).join('\r\n'),'text/csv;charset=utf-8;')};
+$('exportjson').onclick=()=>download('copia_llistat_DIB.json',JSON.stringify(animals,null,2),'application/json');
+$('clearlist').onclick=()=>{if(confirm('Vols esborrar tots els animals del llistat?')){animals=[];render();setStatus('Llistat esborrat.')}};
+$('importfile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const txt=await f.text();const lines=txt.replace(/^\uFEFF/,'').split(/\r?\n/).slice(1);lines.forEach(line=>{if(!line.trim())return;const cols=line.split(';').map(s=>s.replace(/^"|"$/g,'').replace(/""/g,'"'));if(cols.length>=3&&!animals.some(a=>a.ident===cols[2]))animals.push({last4:cols[0],birth:cols[1],ident:cols[2]})});animals.sort((a,b)=>a.last4.localeCompare(b.last4,undefined,{numeric:true}));render();e.target.value='';setStatus('Importació acabada.')};
+render();
+</script>
+</body>
+</html>
