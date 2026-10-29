@@ -37,7 +37,7 @@ footer{font-size:.8rem;color:var(--muted);line-height:1.45;padding:0 2px 18px}
 <button id="start">Activar càmera</button><button id="stop" class="secondary" disabled>Aturar</button>
 <button id="scan" class="secondary" disabled>Escanejar ara</button>
 </div>
-<p class="hint">Mantén el mòbil en vertical i el DIB en horitzontal. Enfoca sobretot la franja inferior amb el codi de barres i els números impresos. El lector prioritzarà el primer identificador (animal) i la data; revisa sempre les dades detectades. Mantén el DIB quiet i amb bona llum. La primera vegada cal permetre l’accés a la càmera.</p>
+<p class="hint">Mantén el mòbil en vertical i el DIB en horitzontal dins del requadre verd. La imatge no es gira. Enfoca el número d’identificació i la data de naixement. Mantén el DIB quiet i amb bona llum. La primera vegada cal permetre l’accés a la càmera.</p>
 <div id="status" class="status">Preparat. Activa la càmera per començar.</div>
 </section>
 <section class="card">
@@ -69,15 +69,6 @@ const $=id=>document.getElementById(id);
 let stream=null, worker=null, scanning=false, scanTimer=null, lastCandidate='', stableCount=0, animals=[];
 function setStatus(msg,error=false){$('status').textContent=msg;$('status').className='status'+(error?' error':'')}
 function normalizeId(s){return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^FR/, 'FR')}
-function findBarcodeData(text){
- const raw=(text||'').toUpperCase().replace(/[|]/g,'1').replace(/\\s+/g,'');
- const ids=[...(raw.matchAll(/FR\\d{8,14}/g))].map(m=>m[0]);
- const first=ids[0]||'';
- let birth='';
- const m=raw.match(/\\/?((?:0[1-9]|[12]\\d|3[01])(?:0[1-9]|1[0-2])(?:19|20)\\d{2})\\d{0,8}\\//);
- if(m){const s=m[1];birth=s.slice(0,2)+'/'+s.slice(2,4)+'/'+s.slice(4,8)}
- return {ident:first,last4:first?first.slice(-4):'',birth};
-}
 function findData(text){
  const clean=(text||'').toUpperCase().replace(/[|]/g,'1').replace(/[OQ]/g,'0').replace(/\s/g,'');
  // DIB identification normally begins with country prefix FR and digits.
@@ -120,7 +111,7 @@ async function scanFrame(manual){
  try{
   const c=document.createElement('canvas');c.width=1000;c.height=Math.round(1000*v.videoHeight/v.videoWidth);
   const ctx=c.getContext('2d');ctx.drawImage(v,0,0,c.width,c.height);
-  const result=await worker.recognize(c);const txt=result.data.text||'';const barcode=findBarcodeData(txt);const d=(barcode.ident||barcode.birth)?{...findData(txt),...barcode}:findData(txt);
+  const result=await worker.recognize(c);const txt=result.data.text||'';const d=findData(txt);
   if(d.ident||d.birth){
    fill(d);const key=d.ident+'|'+d.birth;
    if(d.ident && d.birth && key===lastCandidate)stableCount++;else{lastCandidate=key;stableCount=1}
